@@ -129,6 +129,7 @@ def _augmentation_block() -> keras.Sequential:
             layers.RandomRotation(0.1),
             layers.RandomZoom(0.1),
             layers.RandomBrightness(0.15, value_range=(0.0, 255.0)),
+            layers.RandomContrast(0.1),
         ],
         name="data_augmentation",
     )
@@ -138,20 +139,26 @@ def _build_custom_model(num_classes: int, img_size: tuple[int, int], augment: bo
     data_augmentation = _augmentation_block()
 
     inputs = keras.Input(shape=(*img_size, 3))
-    x = layers.Rescaling(1.0)(inputs)
+    x = inputs
     if augment:
         x = data_augmentation(x)
     x = layers.Rescaling(1.0 / 255.0)(x)
 
-    x = layers.Conv2D(32, 3, activation="relu", padding="same")(x)
+    x = layers.Conv2D(32, 3, padding="same", use_bias=False)(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation("relu")(x)
     x = layers.MaxPooling2D()(x)
-    x = layers.Conv2D(64, 3, activation="relu", padding="same")(x)
+    x = layers.Conv2D(64, 3, padding="same", use_bias=False)(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation("relu")(x)
     x = layers.MaxPooling2D()(x)
-    x = layers.Conv2D(128, 3, activation="relu", padding="same")(x)
+    x = layers.Conv2D(128, 3, padding="same", use_bias=False)(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.Activation("relu")(x)
     x = layers.MaxPooling2D()(x)
-    x = layers.Flatten()(x)
-    x = layers.Dense(256, activation="relu")(x)
-    x = layers.Dropout(0.5)(x)
+    x = layers.GlobalAveragePooling2D()(x)
+    x = layers.Dense(128, activation="relu")(x)
+    x = layers.Dropout(0.3)(x)
     outputs = layers.Dense(num_classes, activation="softmax")(x)
     return keras.Model(inputs, outputs)
 
@@ -183,7 +190,7 @@ def _build_transfer_model(
     base.trainable = not freeze_backbone
 
     inputs = keras.Input(shape=(*img_size, 3))
-    x = layers.Rescaling(1.0)(inputs)
+    x = inputs
     if augment:
         x = data_augmentation(x)
     x = preprocess_input(x)

@@ -1,5 +1,7 @@
 import argparse
+import json
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -21,9 +23,7 @@ LOGGER = logging.getLogger(__name__)
 
 TRAIN_DIR = Path("data/train")
 VAL_DIR = Path("data/val")
-MODEL_DIR = Path("model")
-MODEL_PATH = MODEL_DIR / "classifier.keras"
-CLASS_NAMES_PATH = MODEL_DIR / "class_names.txt"
+MODELS_DIR = Path("models")
 IMG_SIZE = (128, 128)
 BATCH_SIZE = 32
 EPOCHS = 20
@@ -48,9 +48,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train image classifier")
     parser.add_argument("--train-dir", type=Path, default=TRAIN_DIR)
     parser.add_argument("--val-dir", type=Path, default=VAL_DIR)
-    parser.add_argument("--model-dir", type=Path, default=MODEL_DIR)
-    parser.add_argument("--model-path", type=Path, default=None)
-    parser.add_argument("--class-names-path", type=Path, default=None)
+    parser.add_argument("--models-dir", "--model-dir", dest="models_dir", type=Path, default=MODELS_DIR)
+    parser.add_argument("--run-name", type=str, default=None)
     parser.add_argument("--img-size", type=int, nargs=2, metavar=("HEIGHT", "WIDTH"), default=list(IMG_SIZE))
     parser.add_argument("--batch-size", type=int, default=BATCH_SIZE)
     parser.add_argument("--epochs", type=int, default=EPOCHS)
@@ -69,6 +68,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--disable-augmentation", action="store_true")
     parser.add_argument("--log-level", default="INFO")
     return parser.parse_args(argv)
+
+
+def generate_run_name() -> str:
+    return datetime.now(timezone.utc).strftime("run-%Y%m%d-%H%M%S")
 
 
 def build_optimizer(args: argparse.Namespace, train_ds: tf.data.Dataset) -> keras.optimizers.Optimizer:
@@ -114,6 +117,85 @@ def build_callbacks(args: argparse.Namespace, model_path: Path) -> list[keras.ca
     return callbacks
 
 
+def save_latest_pointer(models_dir: Path, payload: dict) -> None:
+    latest_path = models_dir / "latest.json"
+    latest_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+
+
+def save_history(path: Path, history: keras.callbacks.History) -> None:
+    serializable = {k: [float(v) for v in vals] for k, vals in history.history.items()}
+    path.write_text(json.dumps(serializable, indent=2), encoding="utf-8")
+
+
+def plot_training_curves(
+    history: keras.callbacks.History,
+    output_path: Path,
+    *,
+    run_name: str,
+    backbone: str,
+    train_samples: int,
+    val_samples: int | str,
+) -> None:
+    epochs = list(range(1, len(history.history.get("loss", [])) + 1))
+    val_acc = history.history.get("val_accuracy", [])
+    val_loss = history.history.get("val_loss", [])
+    lr_history = history.history.get("learning_rate", [])
+
+    fig, axes = plt.subplots(1, 3, figsize=(16, 4.8))
+
+    axes[0].plot(epochs, history.history.get("accuracy", []), label="Train", marker="o", linewidth=1.8)
+    axes[0].plot(epochs, val_acc, label="Val", marker="o", linewidth=1.8)
+    axes[0].set_title("Accuracy by Epoch")
+    axes[0].set_xlabel("Epoch")
+    axes[0].set_ylabel("Accuracy")
+    axes[0].grid(alpha=0.25)
+    axes[0].legend()
+
+    if val_acc:
+        best_idx = max(range(len(val_acc)), key=lambda i: val_acc[i])
+        axes[0].scatter(best_idx + 1, val_acc[best_idx], color="red", zorder=3)
+        axes[0].annotate(
+            f"best={val_acc[best_idx]:.3f}",
+            (best_idx + 1, val_acc[best_idx]),
+            textcoords="offset points",
+            xytext=(6, 8),
+        )
+
+    axes[1].plot(epochs, history.history.get("loss", []), label="Train", marker="o", linewidth=1.8)
+    axes[1].plot(epochs, val_loss, label="Val", marker="o", linewidth=1.8)
+    axes[1].set_title("Loss by Epoch")
+    axes[1].set_xlabel("Epoch")
+    axes[1].set_ylabel("Loss")
+    axes[1].grid(alpha=0.25)
+    axes[1].legend()
+
+    if val_loss:
+        best_idx = min(range(len(val_loss)), key=lambda i: val_loss[i])
+        axes[1].scatter(best_idx + 1, val_loss[best_idx], color="red", zorder=3)
+        axes[1].annotate(
+            f"min={val_loss[best_idx]:.3f}",
+            (best_idx + 1, val_loss[best_idx]),
+            textcoords="offset points",
+            xytext=(6, 8),
+        )
+
+    if lr_history:
+        axes[2].plot(epochs, lr_history, marker="o", linewidth=1.8)
+        axes[2].set_yscale("log")
+    axes[2].set_title("Learning Rate by Epoch")
+    axes[2].set_xlabel("Epoch")
+    axes[2].set_ylabel("Learning Rate")
+    axes[2].grid(alpha=0.25)
+
+    fig.suptitle(
+        f"Run: {run_name} | Backbone: {backbone} | Train: {train_samples} | Val: {val_samples}",
+        fontsize=11,
+    )
+    plt.tight_layout()
+    plt.savefig(output_path)
+    plt.show()
+
+
 def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
     configure_logging(args.log_level)
@@ -121,13 +203,22 @@ def main(argv: list[str] | None = None) -> None:
     img_size = (args.img_size[0], args.img_size[1])
     train_dir: Path = args.train_dir
     val_dir: Path = args.val_dir
-    model_dir: Path = args.model_dir
-    model_path: Path = args.model_path or (model_dir / MODEL_PATH.name)
-    class_names_path: Path = args.class_names_path or (model_dir / CLASS_NAMES_PATH.name)
+    models_dir: Path = args.models_dir
 
     tf.keras.utils.set_random_seed(args.seed)
 
+    run_name = args.run_name or generate_run_name()
+    run_dir = models_dir / run_name
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    model_path = run_dir / "model.keras"
+    class_names_path = run_dir / "class_names.txt"
+    curves_path = run_dir / "training_curves.png"
+    history_path = run_dir / "training_history.json"
+    metadata_path = run_dir / "run_metadata.json"
+
     class_names = discover_classes(train_dir)
+    LOGGER.info("Run %s", run_name)
     LOGGER.info("Found %d classes: %s", len(class_names), class_names)
 
     if has_class_directories(val_dir):
@@ -139,7 +230,7 @@ def main(argv: list[str] | None = None) -> None:
             args.batch_size,
             shuffle=True,
             seed=args.seed,
-            cache_path=model_dir / ".cache" / "train.cache",
+            cache_path=run_dir / ".cache" / "train.cache",
         )
         val_ds = create_image_dataset(
             val_dir,
@@ -148,7 +239,7 @@ def main(argv: list[str] | None = None) -> None:
             args.batch_size,
             shuffle=False,
             seed=args.seed,
-            cache_path=model_dir / ".cache" / "val.cache",
+            cache_path=run_dir / ".cache" / "val.cache",
         )
         LOGGER.info("Using dedicated validation set from %s", val_dir)
     else:
@@ -161,18 +252,18 @@ def main(argv: list[str] | None = None) -> None:
             seed=args.seed,
             validation_split=args.validation_split,
             subset="training",
-            cache_path=model_dir / ".cache" / "train.cache",
+            cache_path=run_dir / ".cache" / "train.cache",
         )
         val_ds = create_image_dataset(
             train_dir,
             class_names,
             img_size,
             args.batch_size,
-            shuffle=True,
+            shuffle=False,
             seed=args.seed,
             validation_split=args.validation_split,
             subset="validation",
-            cache_path=model_dir / ".cache" / "val.cache",
+            cache_path=run_dir / ".cache" / "val.cache",
         )
         LOGGER.info(
             "No data/val class folders found. Using seeded split from train data "
@@ -205,7 +296,6 @@ def main(argv: list[str] | None = None) -> None:
         metrics=["accuracy"],
     )
 
-    model_dir.mkdir(parents=True, exist_ok=True)
     callbacks = build_callbacks(args, model_path)
 
     history = model.fit(
@@ -215,29 +305,48 @@ def main(argv: list[str] | None = None) -> None:
         callbacks=callbacks,
     )
 
-    # Keeps disk artifact aligned with best weights restored by EarlyStopping.
     model.save(model_path)
     save_class_names(class_names_path, class_names)
+    save_history(history_path, history)
+
+    best_val_acc = max(history.history.get("val_accuracy", [0.0]))
+    best_val_loss = min(history.history.get("val_loss", [float("inf")]))
+
+    metadata = {
+        "run_name": run_name,
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "run_dir": str(run_dir),
+        "model_path": str(model_path),
+        "class_names_path": str(class_names_path),
+        "history_path": str(history_path),
+        "curves_path": str(curves_path),
+        "backbone": args.backbone,
+        "image_size": list(img_size),
+        "batch_size": args.batch_size,
+        "epochs_requested": args.epochs,
+        "epochs_ran": len(history.history.get("loss", [])),
+        "train_samples": train_samples,
+        "val_samples": val_samples,
+        "best_val_accuracy": float(best_val_acc),
+        "best_val_loss": float(best_val_loss),
+    }
+    metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
+    save_latest_pointer(models_dir, metadata)
 
     LOGGER.info("Best model saved to %s", model_path)
     LOGGER.info("Class names saved to %s", class_names_path)
+    LOGGER.info("Run metadata saved to %s", metadata_path)
+    LOGGER.info("Updated latest pointer: %s", models_dir / "latest.json")
 
-    fig, axes = plt.subplots(1, 2, figsize=(12, 4))
-    axes[0].plot(history.history["accuracy"], label="Train")
-    axes[0].plot(history.history["val_accuracy"], label="Val")
-    axes[0].set_title("Accuracy")
-    axes[0].legend()
-
-    axes[1].plot(history.history["loss"], label="Train")
-    axes[1].plot(history.history["val_loss"], label="Val")
-    axes[1].set_title("Loss")
-    axes[1].legend()
-
-    plt.tight_layout()
-    curves_path = model_dir / "training_curves.png"
-    plt.savefig(curves_path)
+    plot_training_curves(
+        history,
+        curves_path,
+        run_name=run_name,
+        backbone=args.backbone,
+        train_samples=train_samples,
+        val_samples=val_samples,
+    )
     LOGGER.info("Training curves saved to %s", curves_path)
-    plt.show()
 
 
 if __name__ == "__main__":

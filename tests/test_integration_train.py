@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import matplotlib
@@ -62,6 +63,12 @@ def test_train_one_epoch_dummy_data(tmp_path: Path, monkeypatch) -> None:
         ]
     )
 
-    assert (model_dir / "classifier.keras").exists()
-    assert (model_dir / "class_names.txt").exists()
-    assert (model_dir / "training_curves.png").exists()
+    latest_path = model_dir / "latest.json"
+    assert latest_path.exists()
+
+    latest_payload = json.loads(latest_path.read_text(encoding="utf-8"))
+    run_dir = Path(latest_payload["run_dir"])
+
+    assert (run_dir / "model.keras").exists()
+    assert (run_dir / "class_names.txt").exists()
+    assert (run_dir / "training_curves.png").exists()

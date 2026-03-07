@@ -15,6 +15,7 @@ Class labels are discovered dynamically from folder names.
 .
 ├── train.py
 ├── evaluate.py
+├── app.py
 ├── utils.py
 ├── pyproject.toml
 ├── data/
@@ -24,7 +25,16 @@ Class labels are discovered dynamically from folder names.
 │   │   └── <class_name>/
 │   └── test/
 │       └── <class_name>/
-└── model/
+└── models/
+    ├── latest.json           # points to most recent training run
+    └── run-YYYYMMDD-HHMMSS/
+        ├── model.keras
+        ├── class_names.txt
+        ├── training_curves.png
+        ├── training_history.json
+        ├── run_metadata.json
+        ├── confusion_matrix.png
+        └── evaluation_report.json
 ```
 
 ## Setup with uv
@@ -41,7 +51,7 @@ uv run train
 
 Training now uses:
 - `tf.data` pipeline (`image_dataset_from_directory`)
-- prefetching + cache files under `model/.cache/`
+- prefetching + cache files under each run dir (`models/<run>/.cache/`)
 - built-in data augmentation (flip/rotation/zoom/brightness)
 - early stopping + best-model checkpointing
 - learning-rate scheduling (`plateau`, `cosine`, or `none`)
@@ -53,9 +63,10 @@ Validation behavior:
 - Otherwise a deterministic seeded split from `data/train/` is used.
 
 Outputs:
-- `model/classifier.keras` (best checkpoint)
-- `model/class_names.txt`
-- `model/training_curves.png`
+- `models/run-YYYYMMDD-HHMMSS/model.keras` (best checkpoint)
+- `models/run-YYYYMMDD-HHMMSS/class_names.txt`
+- `models/run-YYYYMMDD-HHMMSS/training_curves.png`
+- `models/latest.json` (the run used by default for evaluation)
 
 Useful training args:
 
@@ -82,7 +93,8 @@ uv run evaluate
 ```
 
 Evaluation uses the same shared `tf.data` utilities and writes:
-- `model/confusion_matrix.png`
+- `models/<run>/confusion_matrix.png`
+- `models/<run>/evaluation_report.json`
 - terminal metrics (loss, accuracy, per-class accuracy)
 
 Useful evaluation args:
@@ -91,11 +103,39 @@ Useful evaluation args:
 uv run evaluate --batch-size 64 --img-size 160 160
 ```
 
+Evaluate a specific run:
+
+```bash
+uv run evaluate --run-name run-20260307-044444
+```
+
 Optional dispatcher entry point:
 
 ```bash
 uv run classifier train
 uv run classifier evaluate
+uv run classifier gui
+```
+
+## GUI (Gradio)
+
+Launch the interactive app:
+
+```bash
+uv run gui
+```
+
+Or with explicit host/port:
+
+```bash
+uv run python app.py --host 127.0.0.1 --port 7860
+```
+
+The GUI provides:
+- Dataset summary (train/val/test class counts)
+- Run-aware training controls (creates versioned runs under `models/`)
+- Evaluation for latest run or a selected run
+- Single-image prediction with class probability display
 ```
 
 ## Tests
