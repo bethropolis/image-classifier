@@ -1,0 +1,19 @@
+[project]
+name = "image-classifier"
+version = "0.1.0"
+description = "Dynamic image classifier with TensorFlow/Keras using folder-based labels"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+    "keras>=3.12.1",
+    "matplotlib>=3.10.8",
+    "numpy>=2.2.6",
+    "pillow>=12.1.1",
+    "pytest>=8.4.2",
+    "tensorflow>=2.21.0",
+]
+
+[project.scripts]
+train = "train:main"
+evaluate = "evaluate:main"
+classifier = "main:main"
