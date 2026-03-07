@@ -27,7 +27,7 @@ Class labels are discovered dynamically from folder names.
 │       └── <class_name>/
 └── models/
     ├── latest.json           # points to most recent training run
-    └── run-YYYYMMDD-HHMMSS/
+    └── run-0001-YYYYMMDD-HHMMSS-backbone/
         ├── model.keras
         ├── class_names.txt
         ├── training_curves.png
@@ -63,15 +63,21 @@ Validation behavior:
 - Otherwise a deterministic seeded split from `data/train/` is used.
 
 Outputs:
-- `models/run-YYYYMMDD-HHMMSS/model.keras` (best checkpoint)
-- `models/run-YYYYMMDD-HHMMSS/class_names.txt`
-- `models/run-YYYYMMDD-HHMMSS/training_curves.png`
+- `models/run-000N-YYYYMMDD-HHMMSS-backbone/model.keras` (best checkpoint)
+- `models/run-000N-YYYYMMDD-HHMMSS-backbone/class_names.txt`
+- `models/run-000N-YYYYMMDD-HHMMSS-backbone/training_curves.png`
 - `models/latest.json` (the run used by default for evaluation)
 
 Useful training args:
 
 ```bash
 uv run train --epochs 30 --batch-size 64 --img-size 160 160 --learning-rate 0.0005
+```
+
+Non-interactive training (no matplotlib pop-up window):
+
+```bash
+uv run train --no-plot
 ```
 
 Transfer-learning example:
@@ -100,7 +106,16 @@ Evaluation uses the same shared `tf.data` utilities and writes:
 Useful evaluation args:
 
 ```bash
-uv run evaluate --batch-size 64 --img-size 160 160
+uv run evaluate --batch-size 64
+```
+
+By default, evaluation reads the image size from each run's `run_metadata.json`.
+Use `--img-size` only as a fallback when metadata is missing.
+
+Non-interactive evaluation (no matplotlib pop-up window):
+
+```bash
+uv run evaluate --no-plot
 ```
 
 Evaluate a specific run:
@@ -136,7 +151,9 @@ The GUI provides:
 - Run-aware training controls (creates versioned runs under `models/`)
 - Evaluation for latest run or a selected run
 - Single-image prediction with class probability display
-```
+- Training/evaluation subprocesses run with `--no-plot` so the web UI is not blocked by matplotlib windows
+- Leaderboard tab that ranks evaluated runs and shows per-class strength tags
+- Latest-run badges in Evaluate/Predict tabs and button lockout while actions are running
 
 ## Tests
 
@@ -150,3 +167,4 @@ uv run pytest -q
 
 - Class folder names must match across train/val/test.
 - Python is constrained to `>=3.10,<3.13` for TensorFlow compatibility.
+- `evaluation_report.json` includes `backbone` and `evaluated_at_utc` for leaderboard ranking.

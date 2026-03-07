@@ -11,6 +11,7 @@ from tensorflow import keras
 from utils import (
     BACKBONE_CHOICES,
     build_model,
+    configure_logging,
     count_images,
     create_image_dataset,
     discover_classes,
@@ -37,13 +38,6 @@ MIN_LEARNING_RATE = 1e-6
 COSINE_ALPHA = 0.01
 
 
-def configure_logging(level: str) -> None:
-    logging.basicConfig(
-        level=getattr(logging, level.upper(), logging.INFO),
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    )
-
-
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train image classifier")
     parser.add_argument("--train-dir", type=Path, default=TRAIN_DIR)
@@ -66,12 +60,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--pretrained", choices=["imagenet", "none"], default="imagenet")
     parser.add_argument("--unfreeze-backbone", action="store_true")
     parser.add_argument("--disable-augmentation", action="store_true")
+    parser.add_argument("--no-plot", action="store_true", help="Save plots but do not open interactive windows")
     parser.add_argument("--log-level", default="INFO")
     return parser.parse_args(argv)
 
 
-def generate_run_name() -> str:
-    return datetime.now(timezone.utc).strftime("run-%Y%m%d-%H%M%S")
+def generate_run_name(models_dir: Path, backbone: str) -> str:
+    existing = (
+        [p.name for p in models_dir.iterdir() if p.is_dir() and p.name.startswith("run-")]
+        if models_dir.exists()
+        else []
+    )
+    next_n = len(existing) + 1
+    now = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    return f"run-{next_n:04d}-{now}-{backbone}"
 
 
 def build_optimizer(args: argparse.Namespace, train_ds: tf.data.Dataset) -> keras.optimizers.Optimizer:
@@ -193,7 +195,6 @@ def plot_training_curves(
     )
     plt.tight_layout()
     plt.savefig(output_path)
-    plt.show()
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -207,7 +208,7 @@ def main(argv: list[str] | None = None) -> None:
 
     tf.keras.utils.set_random_seed(args.seed)
 
-    run_name = args.run_name or generate_run_name()
+    run_name = args.run_name or generate_run_name(models_dir, args.backbone)
     run_dir = models_dir / run_name
     run_dir.mkdir(parents=True, exist_ok=True)
 
@@ -346,6 +347,10 @@ def main(argv: list[str] | None = None) -> None:
         train_samples=train_samples,
         val_samples=val_samples,
     )
+    if not args.no_plot:
+        plt.show()
+    else:
+        plt.close("all")
     LOGGER.info("Training curves saved to %s", curves_path)
 
 

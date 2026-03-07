@@ -1,3 +1,5 @@
+import json
+import logging
 from pathlib import Path
 
 import tensorflow as tf
@@ -7,6 +9,13 @@ from tensorflow.keras import layers
 AUTOTUNE = tf.data.AUTOTUNE
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp"}
 BACKBONE_CHOICES = ("custom", "mobilenetv2", "efficientnetb0")
+
+
+def configure_logging(level: str) -> None:
+    logging.basicConfig(
+        level=getattr(logging, level.upper(), logging.INFO),
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
 
 
 def discover_classes(directory: Path) -> list[str]:
@@ -83,27 +92,6 @@ def create_image_dataset(
         dataset = dataset.cache(str(cache_path))
 
     return dataset.prefetch(AUTOTUNE)
-
-
-def load_dataset(
-    directory: Path,
-    class_names: list[str],
-    img_size: tuple[int, int],
-    batch_size: int,
-    *,
-    shuffle: bool = False,
-    seed: int | None = None,
-    cache_path: Path | None = None,
-) -> tf.data.Dataset:
-    return create_image_dataset(
-        directory=directory,
-        class_names=class_names,
-        img_size=img_size,
-        batch_size=batch_size,
-        shuffle=shuffle,
-        seed=seed,
-        cache_path=cache_path,
-    )
 
 
 def save_class_names(path: Path, class_names: list[str]) -> None:
@@ -224,3 +212,25 @@ def build_model(
         pretrained_weights=pretrained_weights,
         freeze_backbone=freeze_backbone,
     )
+
+
+def load_leaderboard(models_dir: Path) -> list[dict]:
+    entries: list[dict] = []
+    if not models_dir.exists():
+        return entries
+
+    for run_dir in sorted(models_dir.glob("run-*")):
+        if not run_dir.is_dir():
+            continue
+        report_path = run_dir / "evaluation_report.json"
+        if not report_path.exists():
+            continue
+        try:
+            payload = json.loads(report_path.read_text(encoding="utf-8"))
+            payload.setdefault("run_name", run_dir.name)
+            payload.setdefault("run_dir", str(run_dir))
+            entries.append(payload)
+        except Exception:  # noqa: BLE001
+            continue
+
+    return sorted(entries, key=lambda e: float(e.get("test_accuracy", 0.0)), reverse=True)
