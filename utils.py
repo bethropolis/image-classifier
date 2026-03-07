@@ -11,10 +11,21 @@ IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp"}
 BACKBONE_CHOICES = ("custom", "mobilenetv2", "efficientnetb0")
 
 
+class CleanFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        message = record.getMessage()
+        if record.levelno >= logging.WARNING:
+            return f"[{record.levelname}] {message}"
+        return message
+
+
 def configure_logging(level: str) -> None:
+    handler = logging.StreamHandler()
+    handler.setFormatter(CleanFormatter())
     logging.basicConfig(
         level=getattr(logging, level.upper(), logging.INFO),
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+        handlers=[handler],
+        force=True,
     )
 
 

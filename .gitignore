@@ -209,6 +209,7 @@ __marimo__/
 # Project-specific: image classifier artifacts and local datasets
 model/.cache/
 model/*.keras
+model/*.txt
 model/*.h5
 model/*.png
 models/**

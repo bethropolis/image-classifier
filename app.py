@@ -584,7 +584,8 @@ def build_app() -> gr.Blocks:
                 img_w_in = gr.Number(label="Image Width", value=128, precision=0)
                 lr_in = gr.Number(label="Learning Rate", value=0.001)
             train_btn = gr.Button("Start Training")
-            train_logs = gr.Textbox(label="Training Logs", lines=16)
+            with gr.Accordion("Training Logs", open=False):
+                train_logs = gr.Textbox(label="", lines=16, container=False)
             train_curve_img = gr.Image(label="Training Curves", type="filepath")
 
         with gr.Tab("Evaluate"):
@@ -592,7 +593,8 @@ def build_app() -> gr.Blocks:
             eval_run_dd = gr.Dropdown(choices=[""], value="", label="Run Name (blank = latest)")
             eval_batch = gr.Number(label="Batch Size", value=32, precision=0)
             eval_btn = gr.Button("Run Evaluation")
-            eval_logs = gr.Textbox(label="Evaluation Logs", lines=14)
+            with gr.Accordion("Evaluation Logs", open=False):
+                eval_logs = gr.Textbox(label="", lines=14, container=False)
             eval_report = gr.Markdown(label="Evaluation Report")
             eval_cm_img = gr.Image(label="Confusion Matrix", type="filepath")
 
