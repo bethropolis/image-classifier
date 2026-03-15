@@ -650,6 +650,7 @@ dependencies = [
     { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pillow" },
     { name = "tensorflow" },
+    { name = "tf2onnx" },
 ]
 
 [package.dev-dependencies]
@@ -665,6 +666,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=2.2.6" },
     { name = "pillow", specifier = ">=12.1.1" },
     { name = "tensorflow", specifier = ">=2.21.0" },
+    { name = "tf2onnx" },
 ]
 
 [package.metadata.requires-dev]
@@ -1046,6 +1048,38 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/91/da/643aad274e29ccbdf42ecd94dafe524b81c87bcb56b83872d54827f10543/numpy-2.4.2-pp311-pypy311_pp73-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:e04ae107ac591763a47398bb45b568fc38f02dbc4aa44c063f67a131f99346cb", size = 15797142, upload-time = "2026-01-31T23:13:02.219Z" },
     { url = "https://files.pythonhosted.org/packages/66/27/965b8525e9cb5dc16481b30a1b3c21e50c7ebf6e9dbd48d0c4d0d5089c7e/numpy-2.4.2-pp311-pypy311_pp73-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:602f65afdef699cda27ec0b9224ae5dc43e328f4c24c689deaf77133dbee74d0", size = 16727979, upload-time = "2026-01-31T23:13:04.62Z" },
     { url = "https://files.pythonhosted.org/packages/de/e5/b7d20451657664b07986c2f6e3be564433f5dcaf3482d68eaecd79afaf03/numpy-2.4.2-pp311-pypy311_pp73-win_amd64.whl", hash = "sha256:be71bf1edb48ebbbf7f6337b5bfd2f895d1902f6335a5830b20141fc126ffba0", size = 12502577, upload-time = "2026-01-31T23:13:07.08Z" },
+]
+
+[[package]]
+name = "onnx"
+version = "1.20.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "ml-dtypes" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "protobuf" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3b/8a/335c03a8683a88a32f9a6bb98899ea6df241a41df64b37b9696772414794/onnx-1.20.1.tar.gz", hash = "sha256:ded16de1df563d51fbc1ad885f2a426f814039d8b5f4feb77febe09c0295ad67", size = 12048980, upload-time = "2026-01-10T01:40:03.043Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/79/cc/4ba3c80cfaffdb541dc5a23eaccb045a627361e94ecaeba30496270f15b3/onnx-1.20.1-cp310-cp310-macosx_12_0_universal2.whl", hash = "sha256:3fe243e83ad737637af6512708454e720d4b0864def2b28e6b0ee587b80a50be", size = 17904206, upload-time = "2026-01-10T01:38:58.574Z" },
+    { url = "https://files.pythonhosted.org/packages/f3/fc/3a1c4ae2cd5cfab2d0ebc1842769b04b417fe13946144a7c8ce470dd9c85/onnx-1.20.1-cp310-cp310-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:e24e96b48f27e4d6b44cb0b195b367a2665da2d819621eec51903d575fc49d38", size = 17414849, upload-time = "2026-01-10T01:39:01.494Z" },
+    { url = "https://files.pythonhosted.org/packages/a4/ab/5017945291b981f2681fb620f2d5b6070e02170c648770711ef1eac79d56/onnx-1.20.1-cp310-cp310-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:0903e6088ed5e8f59ebd381ab2a6e9b2a60b4c898f79aa2fe76bb79cf38a5031", size = 17513600, upload-time = "2026-01-10T01:39:04.348Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/b0/063e79dc365972af876d786bacc6acd8909691af2b9296615ff74ad182f3/onnx-1.20.1-cp310-cp310-win32.whl", hash = "sha256:17483e59082b2ca6cadd2b48fd8dce937e5b2c985ed5583fefc38af928be1826", size = 16239159, upload-time = "2026-01-10T01:39:07.254Z" },
+    { url = "https://files.pythonhosted.org/packages/2a/73/a992271eb3683e676239d71b5a78ad3cf4d06d2223c387e701bf305da199/onnx-1.20.1-cp310-cp310-win_amd64.whl", hash = "sha256:e2b0cf797faedfd3b83491dc168ab5f1542511448c65ceb482f20f04420cbf3a", size = 16391718, upload-time = "2026-01-10T01:39:09.96Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/38/1a0e74d586c08833404100f5c052f92732fb5be417c0b2d7cb0838443bfe/onnx-1.20.1-cp311-cp311-macosx_12_0_universal2.whl", hash = "sha256:53426e1b458641e7a537e9f176330012ff59d90206cac1c1a9d03cdd73ed3095", size = 17904965, upload-time = "2026-01-10T01:39:13.532Z" },
+    { url = "https://files.pythonhosted.org/packages/96/25/64b076e9684d17335f80b15b3bf502f7a8e1a89f08a6b208d4f2861b3011/onnx-1.20.1-cp311-cp311-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:ca7281f8c576adf396c338cf43fff26faee8d4d2e2577b8e73738f37ceccf945", size = 17415179, upload-time = "2026-01-10T01:39:16.516Z" },
+    { url = "https://files.pythonhosted.org/packages/ac/d5/6743b409421ced20ad5af1b3a7b4c4e568689ffaca86db431692fca409a6/onnx-1.20.1-cp311-cp311-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:2297f428c51c7fc6d8fad0cf34384284dfeff3f86799f8e83ef905451348ade0", size = 17513672, upload-time = "2026-01-10T01:39:19.35Z" },
+    { url = "https://files.pythonhosted.org/packages/9a/6b/dae82e6fdb2043302f29adca37522312ea2be55b75907b59be06fbdffe87/onnx-1.20.1-cp311-cp311-win32.whl", hash = "sha256:63d9cbcab8c96841eadeb7c930e07bfab4dde8081eb76fb68e0dfb222706b81e", size = 16239336, upload-time = "2026-01-10T01:39:22.506Z" },
+    { url = "https://files.pythonhosted.org/packages/8e/17/a0d7863390c1f2067d7c02dcc1477034965c32aaa1407bfcf775305ffee4/onnx-1.20.1-cp311-cp311-win_amd64.whl", hash = "sha256:d78cde72d7ca8356a2d99c5dc0dbf67264254828cae2c5780184486c0cd7b3bf", size = 16392120, upload-time = "2026-01-10T01:39:25.106Z" },
+    { url = "https://files.pythonhosted.org/packages/aa/72/9b879a46eb7a3322223791f36bf9c25d95da9ed93779eabb75a560f22e5b/onnx-1.20.1-cp311-cp311-win_arm64.whl", hash = "sha256:0104bb2d4394c179bcea3df7599a45a2932b80f4633840896fcf0d7d8daecea2", size = 16346923, upload-time = "2026-01-10T01:39:27.782Z" },
+    { url = "https://files.pythonhosted.org/packages/7c/4c/4b17e82f91ab9aa07ff595771e935ca73547b035030dc5f5a76e63fbfea9/onnx-1.20.1-cp312-abi3-macosx_12_0_universal2.whl", hash = "sha256:1d923bb4f0ce1b24c6859222a7e6b2f123e7bfe7623683662805f2e7b9e95af2", size = 17903547, upload-time = "2026-01-10T01:39:31.015Z" },
+    { url = "https://files.pythonhosted.org/packages/64/5e/1bfa100a9cb3f2d3d5f2f05f52f7e60323b0e20bb0abace1ae64dbc88f25/onnx-1.20.1-cp312-abi3-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:ddc0b7d8b5a94627dc86c533d5e415af94cbfd103019a582669dad1f56d30281", size = 17412021, upload-time = "2026-01-10T01:39:33.885Z" },
+    { url = "https://files.pythonhosted.org/packages/fb/71/d3fec0dcf9a7a99e7368112d9c765154e81da70fcba1e3121131a45c245b/onnx-1.20.1-cp312-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:9336b6b8e6efcf5c490a845f6afd7e041c89a56199aeda384ed7d58fb953b080", size = 17510450, upload-time = "2026-01-10T01:39:36.589Z" },
+    { url = "https://files.pythonhosted.org/packages/74/a7/edce1403e05a46e59b502fae8e3350ceeac5841f8e8f1561e98562ed9b09/onnx-1.20.1-cp312-abi3-win32.whl", hash = "sha256:564c35a94811979808ab5800d9eb4f3f32c12daedba7e33ed0845f7c61ef2431", size = 16238216, upload-time = "2026-01-10T01:39:39.46Z" },
+    { url = "https://files.pythonhosted.org/packages/8b/c7/8690c81200ae652ac550c1df52f89d7795e6cc941f3cb38c9ef821419e80/onnx-1.20.1-cp312-abi3-win_amd64.whl", hash = "sha256:9fe7f9a633979d50984b94bda8ceb7807403f59a341d09d19342dc544d0ca1d5", size = 16389207, upload-time = "2026-01-10T01:39:41.955Z" },
+    { url = "https://files.pythonhosted.org/packages/01/a0/4fb0e6d36eaf079af366b2c1f68bafe92df6db963e2295da84388af64abc/onnx-1.20.1-cp312-abi3-win_arm64.whl", hash = "sha256:21d747348b1c8207406fa2f3e12b82f53e0d5bb3958bcd0288bd27d3cb6ebb00", size = 16344155, upload-time = "2026-01-10T01:39:45.536Z" },
 ]
 
 [[package]]
@@ -1653,6 +1687,23 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/46/79/cf31d7a93a8fdc6aa0fbb665be84426a8c5a557d9240b6239e9e11e35fc5/termcolor-3.3.0.tar.gz", hash = "sha256:348871ca648ec6a9a983a13ab626c0acce02f515b9e1983332b17af7979521c5", size = 14434, upload-time = "2025-12-29T12:55:21.882Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/33/d1/8bb87d21e9aeb323cc03034f5eaf2c8f69841e40e4853c2627edf8111ed3/termcolor-3.3.0-py3-none-any.whl", hash = "sha256:cf642efadaf0a8ebbbf4bc7a31cec2f9b5f21a9f726f4ccbb08192c9c26f43a5", size = 7734, upload-time = "2025-12-29T12:55:20.718Z" },
+]
+
+[[package]]
+name = "tf2onnx"
+version = "1.17.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "flatbuffers" },
+    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "numpy", version = "2.4.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
+    { name = "onnx" },
+    { name = "protobuf" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/8e/62/09bc2e8a91c717a2b37b6631ad08535f1f04d951010abbc5b6e446c988eb/tf2onnx-1.17.0.tar.gz", hash = "sha256:998dc1841d5e2405226d985f28287570569034b7609924a52fb297b42462c1c1", size = 591633, upload-time = "2026-03-04T19:37:23.256Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/98/83/05d2b28b2246118105c48a7a8c02e3419f2ea0fff0bb49a8bd7876e7373c/tf2onnx-1.17.0-py3-none-any.whl", hash = "sha256:64506e0ff12ddb21918b5659541577a4e9eec06d6bb1f2c7c4ebba5b09f30dba", size = 839132, upload-time = "2026-03-04T19:37:21.236Z" },
 ]
 
 [[package]]

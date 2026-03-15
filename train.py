@@ -13,6 +13,7 @@ from utils import (
     build_model,
     configure_logging,
     count_images,
+    count_images_per_class,
     create_image_dataset,
     discover_classes,
     ensure_class_directories,
@@ -56,10 +57,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--lr-factor", type=float, default=LR_FACTOR)
     parser.add_argument("--min-learning-rate", type=float, default=MIN_LEARNING_RATE)
     parser.add_argument("--cosine-alpha", type=float, default=COSINE_ALPHA)
-    parser.add_argument("--backbone", choices=list(BACKBONE_CHOICES), default="custom")
+    parser.add_argument("--backbone", choices=list(BACKBONE_CHOICES), default="custom_v2")
     parser.add_argument("--pretrained", choices=["imagenet", "none"], default="imagenet")
     parser.add_argument("--unfreeze-backbone", action="store_true")
     parser.add_argument("--disable-augmentation", action="store_true")
+    parser.add_argument("--aug-flip", action="store_true", default=True)
+    parser.add_argument("--no-aug-flip", dest="aug_flip", action="store_false")
+    parser.add_argument("--aug-rotation", type=float, default=0.1)
+    parser.add_argument("--aug-zoom", type=float, default=0.1)
+    parser.add_argument("--aug-brightness", type=float, default=0.15)
+    parser.add_argument("--aug-contrast", type=float, default=0.1)
+    parser.add_argument("--label-smoothing", type=float, default=0.1)
+    parser.add_argument("--class-weights", choices=["none", "auto"], default="none")
     parser.add_argument("--no-plot", action="store_true", help="Save plots but do not open interactive windows")
     parser.add_argument("--log-level", default="INFO")
     return parser.parse_args(argv)
@@ -287,23 +296,47 @@ def main(argv: list[str] | None = None) -> None:
         backbone=args.backbone,
         pretrained_weights=pretrained_weights,
         freeze_backbone=freeze_backbone,
+        aug_flip=args.aug_flip,
+        aug_rotation=args.aug_rotation,
+        aug_zoom=args.aug_zoom,
+        aug_brightness=args.aug_brightness,
+        aug_contrast=args.aug_contrast,
     )
     model.summary()
 
     optimizer = build_optimizer(args, train_ds)
     model.compile(
         optimizer=optimizer,
-        loss="sparse_categorical_crossentropy",
+        loss=keras.losses.SparseCategoricalCrossentropy(label_smoothing=args.label_smoothing),
         metrics=["accuracy"],
     )
 
     callbacks = build_callbacks(args, model_path)
+
+    class_weights = None
+    if args.class_weights == "auto":
+        class_counts = count_images_per_class(train_dir, class_names)
+        total = sum(class_counts.values())
+        if total == 0:
+            LOGGER.warning("No training images found for class-weight calculation. Skipping class weights.")
+        else:
+            class_weights = {}
+            num_classes = len(class_names)
+            for idx, cls in enumerate(class_names):
+                cls_count = class_counts.get(cls, 0)
+                if cls_count == 0:
+                    LOGGER.warning("Class '%s' has 0 images; assigning weight 0.0", cls)
+                    class_weights[idx] = 0.0
+                else:
+                    class_weights[idx] = total / (num_classes * cls_count)
+            LOGGER.info("Using auto class weights: %s", class_weights)
 
     history = model.fit(
         train_ds,
         validation_data=val_ds,
         epochs=args.epochs,
         callbacks=callbacks,
+        class_weight=class_weights,
     )
 
     model.save(model_path)

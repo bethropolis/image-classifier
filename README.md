@@ -53,9 +53,10 @@ Training now uses:
 - `tf.data` pipeline (`image_dataset_from_directory`)
 - prefetching + cache files under each run dir (`models/<run>/.cache/`)
 - built-in data augmentation (flip/rotation/zoom/brightness)
+- label smoothing (default `0.1`, configurable)
 - early stopping + best-model checkpointing
 - learning-rate scheduling (`plateau`, `cosine`, or `none`)
-- optional transfer learning backbones (`mobilenetv2`, `efficientnetb0`)
+- optional transfer learning backbones (`mobilenetv2`, `efficientnetb0`, `resnet50`)
 - structured logging (use `--log-level`)
 
 Validation behavior:
@@ -84,6 +85,24 @@ Transfer-learning example:
 
 ```bash
 uv run train --backbone mobilenetv2 --pretrained imagenet
+```
+
+Stronger custom backbone (default):
+
+```bash
+uv run train --backbone custom_v2
+```
+
+Label smoothing example:
+
+```bash
+uv run train --label-smoothing 0.05
+```
+
+Augmentation tuning example:
+
+```bash
+uv run train --aug-rotation 0.2 --aug-zoom 0.2 --aug-brightness 0.2 --aug-contrast 0.15 --no-aug-flip
 ```
 
 Cosine scheduler example:

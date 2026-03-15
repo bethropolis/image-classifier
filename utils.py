@@ -8,7 +8,7 @@ from tensorflow.keras import layers
 
 AUTOTUNE = tf.data.AUTOTUNE
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".bmp", ".gif", ".webp"}
-BACKBONE_CHOICES = ("custom", "mobilenetv2", "efficientnetb0")
+BACKBONE_CHOICES = ("custom", "custom_v2", "mobilenetv2", "efficientnetb0", "resnet50")
 
 
 class CleanFormatter(logging.Formatter):
@@ -70,6 +70,19 @@ def count_images(directory: Path, class_names: list[str]) -> int:
     return count
 
 
+def count_images_per_class(directory: Path, class_names: list[str]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for cls in class_names:
+        cls_path = directory / cls
+        cls_count = 0
+        if cls_path.is_dir():
+            for fpath in cls_path.iterdir():
+                if fpath.is_file() and fpath.suffix.lower() in IMAGE_EXTENSIONS:
+                    cls_count += 1
+        counts[cls] = cls_count
+    return counts
+
+
 def create_image_dataset(
     directory: Path,
     class_names: list[str],
@@ -121,43 +134,91 @@ def load_class_names(path: Path) -> list[str]:
     return class_names
 
 
-def _augmentation_block() -> keras.Sequential:
-    return keras.Sequential(
-        [
-            layers.RandomFlip("horizontal"),
-            layers.RandomRotation(0.1),
-            layers.RandomZoom(0.1),
-            layers.RandomBrightness(0.15, value_range=(0.0, 255.0)),
-            layers.RandomContrast(0.1),
-        ],
-        name="data_augmentation",
-    )
+def _augmentation_block(
+    *,
+    flip: bool,
+    rotation: float,
+    zoom: float,
+    brightness: float,
+    contrast: float,
+) -> keras.Sequential | None:
+    aug_layers: list[layers.Layer] = []
+    if flip:
+        aug_layers.append(layers.RandomFlip("horizontal"))
+    if rotation > 0:
+        aug_layers.append(layers.RandomRotation(rotation))
+    if zoom > 0:
+        aug_layers.append(layers.RandomZoom(zoom))
+    if brightness > 0:
+        aug_layers.append(layers.RandomBrightness(brightness, value_range=(0.0, 255.0)))
+    if contrast > 0:
+        aug_layers.append(layers.RandomContrast(contrast))
+
+    if not aug_layers:
+        return None
+
+    return keras.Sequential(aug_layers, name="data_augmentation")
 
 
-def _build_custom_model(num_classes: int, img_size: tuple[int, int], augment: bool) -> keras.Model:
-    data_augmentation = _augmentation_block()
+def _build_custom_model(
+    num_classes: int,
+    img_size: tuple[int, int],
+    augment: bool,
+    augmentation: keras.Sequential | None,
+    variant: str,
+) -> keras.Model:
 
     inputs = keras.Input(shape=(*img_size, 3))
     x = inputs
-    if augment:
-        x = data_augmentation(x)
+    if augment and augmentation is not None:
+        x = augmentation(x)
     x = layers.Rescaling(1.0 / 255.0)(x)
 
-    x = layers.Conv2D(32, 3, padding="same", use_bias=False)(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.Activation("relu")(x)
-    x = layers.MaxPooling2D()(x)
-    x = layers.Conv2D(64, 3, padding="same", use_bias=False)(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.Activation("relu")(x)
-    x = layers.MaxPooling2D()(x)
-    x = layers.Conv2D(128, 3, padding="same", use_bias=False)(x)
-    x = layers.BatchNormalization()(x)
-    x = layers.Activation("relu")(x)
-    x = layers.MaxPooling2D()(x)
-    x = layers.GlobalAveragePooling2D()(x)
-    x = layers.Dense(128, activation="relu")(x)
-    x = layers.Dropout(0.3)(x)
+    if variant == "v1":
+        x = layers.Conv2D(32, 3, padding="same", use_bias=False)(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.Activation("relu")(x)
+        x = layers.MaxPooling2D()(x)
+        x = layers.Conv2D(64, 3, padding="same", use_bias=False)(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.Activation("relu")(x)
+        x = layers.MaxPooling2D()(x)
+        x = layers.Conv2D(128, 3, padding="same", use_bias=False)(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.Activation("relu")(x)
+        x = layers.MaxPooling2D()(x)
+        x = layers.GlobalAveragePooling2D()(x)
+        x = layers.Dense(128, activation="relu")(x)
+        x = layers.Dropout(0.3)(x)
+    elif variant == "v2":
+        x = layers.Conv2D(32, 3, padding="same", use_bias=False)(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.Activation("relu")(x)
+        x = layers.Conv2D(32, 3, padding="same", use_bias=False)(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.Activation("relu")(x)
+        x = layers.MaxPooling2D()(x)
+        x = layers.Conv2D(64, 3, padding="same", use_bias=False)(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.Activation("relu")(x)
+        x = layers.Conv2D(64, 3, padding="same", use_bias=False)(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.Activation("relu")(x)
+        x = layers.MaxPooling2D()(x)
+        x = layers.Conv2D(128, 3, padding="same", use_bias=False)(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.Activation("relu")(x)
+        x = layers.MaxPooling2D()(x)
+        x = layers.Conv2D(256, 3, padding="same", use_bias=False)(x)
+        x = layers.BatchNormalization()(x)
+        x = layers.Activation("relu")(x)
+        x = layers.GlobalAveragePooling2D()(x)
+        x = layers.Dense(256, activation="relu")(x)
+        x = layers.Dropout(0.4)(x)
+        x = layers.Dense(128, activation="relu")(x)
+        x = layers.Dropout(0.3)(x)
+    else:
+        raise ValueError(f"Unsupported custom variant: {variant}")
     outputs = layers.Dense(num_classes, activation="softmax")(x)
     return keras.Model(inputs, outputs)
 
@@ -166,18 +227,20 @@ def _build_transfer_model(
     num_classes: int,
     img_size: tuple[int, int],
     augment: bool,
+    augmentation: keras.Sequential | None,
     backbone: str,
     pretrained_weights: str | None,
     freeze_backbone: bool,
 ) -> keras.Model:
-    data_augmentation = _augmentation_block()
-
     if backbone == "mobilenetv2":
         backbone_ctor = keras.applications.MobileNetV2
         preprocess_input = keras.applications.mobilenet_v2.preprocess_input
     elif backbone == "efficientnetb0":
         backbone_ctor = keras.applications.EfficientNetB0
         preprocess_input = keras.applications.efficientnet.preprocess_input
+    elif backbone == "resnet50":
+        backbone_ctor = keras.applications.ResNet50
+        preprocess_input = keras.applications.resnet.preprocess_input
     else:
         raise ValueError(f"Unsupported backbone: {backbone}")
 
@@ -190,8 +253,8 @@ def _build_transfer_model(
 
     inputs = keras.Input(shape=(*img_size, 3))
     x = inputs
-    if augment:
-        x = data_augmentation(x)
+    if augment and augmentation is not None:
+        x = augmentation(x)
     x = preprocess_input(x)
     x = base(x, training=not freeze_backbone)
     x = layers.GlobalAveragePooling2D()(x)
@@ -207,18 +270,44 @@ def build_model(
     backbone: str = "custom",
     pretrained_weights: str | None = "imagenet",
     freeze_backbone: bool = True,
+    *,
+    aug_flip: bool = True,
+    aug_rotation: float = 0.1,
+    aug_zoom: float = 0.1,
+    aug_brightness: float = 0.15,
+    aug_contrast: float = 0.1,
 ) -> keras.Model:
     if backbone not in BACKBONE_CHOICES:
         choices = ", ".join(BACKBONE_CHOICES)
         raise ValueError(f"Invalid backbone '{backbone}'. Expected one of: {choices}")
 
-    if backbone == "custom":
-        return _build_custom_model(num_classes=num_classes, img_size=img_size, augment=augment)
+    augmentation = (
+        _augmentation_block(
+            flip=aug_flip,
+            rotation=aug_rotation,
+            zoom=aug_zoom,
+            brightness=aug_brightness,
+            contrast=aug_contrast,
+        )
+        if augment
+        else None
+    )
+
+    if backbone in ("custom", "custom_v2"):
+        variant = "v2" if backbone == "custom_v2" else "v1"
+        return _build_custom_model(
+            num_classes=num_classes,
+            img_size=img_size,
+            augment=augment,
+            augmentation=augmentation,
+            variant=variant,
+        )
 
     return _build_transfer_model(
         num_classes=num_classes,
         img_size=img_size,
         augment=augment,
+        augmentation=augmentation,
         backbone=backbone,
         pretrained_weights=pretrained_weights,
         freeze_backbone=freeze_backbone,
